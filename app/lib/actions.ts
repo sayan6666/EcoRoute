@@ -3,6 +3,12 @@ import { openDb } from "../opendb";
 import { z } from "zod";
 import { redirect } from "next/navigation";
 
+const formSchema = z.object({
+    email: z.string().email({ message: "email" }),
+    password: z.string().min(1, { message: "password" }),
+});
+
+
 const formSchema2 = z.object({
     name: z.string().min(1, {message: "name"}),
     email: z.string().email({ message: "email" }),
@@ -48,6 +54,29 @@ export async function handleRegistration(prevstate: any, formData: FormData) {
             }
     }
     await db.run("INSERT INTO users (name,email,password) VALUES (?, ?, ?)", [validatedData.data.name, validatedData.data.email, validatedData.data.password]);
+    await db.close();
+    return
+    {
+        success: "ok"
+    };
+}
+
+export async function handleSubmit(prevState: any, formData: FormData) {
+    const data = Object.fromEntries(formData);
+    const validatedData = formSchema.safeParse(data);
+    if (!validatedData.success) {
+        return {
+            errors: {
+                email: validatedData.error.flatten().fieldErrors?.email,
+                password: validatedData.error.flatten().fieldErrors?.password
+            }
+        }
+    }
+    const db = await openDb();
+    const admins = await db.get("SELECT password FROM admins WHERE email=?", validatedData.data.email);
+    if (admins["password"] == validatedData.data.password) {
+        redirect("/acc");
+    }
     await db.close();
     return
     {
