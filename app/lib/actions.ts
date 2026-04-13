@@ -8,12 +8,17 @@ const formSchema = z.object({
     password: z.string().min(1, { message: "password" }),
 });
 
-
 const formSchema2 = z.object({
     name: z.string().min(1, {message: "name"}),
     email: z.string().email({ message: "email" }),
     password: z.string().min(1, { message: "password" }),
     password_repeat: z.string().min(1, { message: "password_repeat" }),
+});
+
+const formSchema3 = z.object({
+    glass: z.boolean({ message: "glass" }),
+    plastic: z.boolean({ message: "plastic" }),
+    metall: z.boolean({ message: "metall" }),
 });
 
 export async function handleRegistration(prevstate: any, formData: FormData) {
@@ -80,6 +85,54 @@ export async function handleSubmit(prevState: any, formData: FormData) {
     await db.close();
     return
     {
+        success: "ok"
+    };
+}
+
+export async function getPoints() {
+    const db = await openDb();
+    const points = await db.all("SELECT * FROM points");
+    return points;
+}
+
+export async function handleFilter(prevstate: any, formData: FormData) {
+    const data = Object.values(formData);
+    const validatedData = formSchema3.safeParse(data);
+    if (!validatedData.success) {
+        return {
+            errors: {
+                glass: validatedData.error.flatten().fieldErrors?.glass,
+                plastic: validatedData.error.flatten().fieldErrors?.plastic,
+                metall: validatedData.error.flatten().fieldErrors?.metall,
+            }
+        }
+    }
+
+    const filters = [];
+    if (validatedData.data.glass) {
+        filters.push("glass");
+    }
+    if (validatedData.data.plastic) {
+        filters.push("plastic");
+    }
+    if (validatedData.data.metall) {
+        filters.push("metall");
+    }
+    const points = await getPoints();
+    const valid_points = [];
+    for (let i = 0; i < points.length; i++) {
+        for (let j = 0; j < filters.length; j++) {
+            if (points[i]["type"].search(filters[j]) != -1) {
+                valid_points.push(points[i]);
+            }
+        }
+    }
+    if (filters.length == 0) {
+        for (let i = 0; i < points.length; i++) {
+            valid_points.push(points[i]);
+        }
+    }
+    return {
         success: "ok"
     };
 }
