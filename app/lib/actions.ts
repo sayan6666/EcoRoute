@@ -121,6 +121,23 @@ export async function getPoints() {
     return points;
 }
 
+export async function getSession() {
+    const nextCookies = await cookies();
+    const session = nextCookies.get("session")?.value;
+    return session ? session : null;
+}
+
+export async function getProfile() {
+    const sessionType = await getSession();
+    const db = await openDb();
+    let profile = null;
+    if (sessionType != null) {
+        profile = await db.get("SELECT name, email FROM " + sessionType.split("_")[1] + " WHERE email=?", sessionType.split("_")[0]);
+    }
+    return profile;
+}
+
+//unused
 export async function handleFilter(prevstate: any, formData: FormData) {
     const data = Object.values(formData);
     const validatedData = formSchema3.safeParse(data);
