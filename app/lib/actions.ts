@@ -3,6 +3,7 @@ import { openDb } from "../opendb";
 import { z } from "zod";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers"
+import { validate } from "maplibre-gl";
 
 const formSchema = z.object({
     email: z.string().email({ message: "email" }),
@@ -21,6 +22,11 @@ const formSchema3 = z.object({
     plastic: z.boolean({ message: "plastic" }),
     metall: z.boolean({ message: "metall" }),
 });
+
+const formSchema4 = z.object({
+    rating: z.int({ message: "rating" }),
+    comment: z.string({message: "comment"}),
+})
 
 export async function handleRegistration(prevstate: any, formData: FormData) {
     const data = Object.fromEntries(formData);
@@ -127,6 +133,13 @@ export async function getSession() {
     return session ? session : null;
 }
 
+//format x_y
+export async function getCurrentPoint() {
+    const nextCookies = await cookies();
+    const point = nextCookies.get("point")?.value;
+    return point;
+}
+
 export async function getProfile() {
     const sessionType = await getSession();
     const db = await openDb();
@@ -135,6 +148,27 @@ export async function getProfile() {
         profile = await db.get("SELECT name, email FROM " + sessionType.split("_")[1] + " WHERE email=?", sessionType.split("_")[0]);
     }
     return profile;
+}
+
+export async function handleReview(prevstate: any, formData: FormData) {
+    const data = Object.values(formData);
+    const validatedData = formSchema4.safeParse(data);
+    if (!validatedData.success) {
+        return {
+            errors: {
+                rating: validatedData.error.flatten().fieldErrors?.rating,
+                comment: validatedData.error.flatten().fieldErrors?.comment,
+            }
+        }
+    }
+    const db = await openDb();
+    const point = await getCurrentPoint();
+    const user = await getProfile();
+    const date = new Date(Date.now().toString());
+    const pointID = db.get("SELECT id FROM points WHERE x=? AND y=?", [point.split("_")[0], point.split("_")[1]]);
+    const userID = db.get("SELECT id FROM users WHERE email=?", user.split("_")[0])
+    db.run("INSERT INTO reviews (user_id,point_id,date,rating,comment)", [userID, pointID, date, validatedData.data.rating, validatedData.data.comment]);
+    await db.close();
 }
 
 //unused
