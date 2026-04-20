@@ -28,6 +28,12 @@ const formSchema4 = z.object({
     comment: z.string({message: "comment"}),
 })
 
+const formSchema5 = z.object({
+    id: z.int({ message: "id" }),
+    verified: z.int({message: "verified"}),
+})
+
+//todo: branch company registration
 export async function handleRegistration(prevstate: any, formData: FormData) {
     const data = Object.fromEntries(formData);
     const validatedData = formSchema2.safeParse(data);
@@ -169,6 +175,31 @@ export async function handleReview(prevstate: any, formData: FormData) {
     const userID = db.get("SELECT id FROM users WHERE email=?", user.split("_")[0])
     db.run("INSERT INTO reviews (user_id,point_id,date,rating,comment)", [userID, pointID, date, validatedData.data.rating, validatedData.data.comment]);
     await db.close();
+    return {
+        success: "ok"
+    };
+}
+
+export async function handleVerification(prevstate: any, formData: FormData) {
+    const data = Object.values(formData);
+    const validatedData = formSchema5.safeParse(data);
+    if (!validatedData.success) {
+        return {
+            errors: {
+                id: validatedData.error.flatten().fieldErrors?.id,
+                verified: validatedData.error.flatten().fieldErrors?.verified,
+            }
+        }
+    }
+    const db = await openDb();
+    const companie = db.get("SELECT company_id FROM requests WHERE id=?", validatedData.data.id);
+    if (validatedData.data.verified != 0) {
+        db.run("UPDATE companies SET verified=1 WHERE id=?",companie);
+    }
+    await db.close();
+    return {
+        succes: "ok"
+    };
 }
 
 //unused
