@@ -2,6 +2,7 @@
 import { openDb } from "../opendb";
 import { z } from "zod";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers"
 
 const formSchema = z.object({
     email: z.string().email({ message: "email" }),
@@ -78,11 +79,36 @@ export async function handleSubmit(prevState: any, formData: FormData) {
         }
     }
     const db = await openDb();
-    const admins = await db.get("SELECT password FROM admins WHERE email=?", validatedData.data.email);
-    if (admins["password"] == validatedData.data.password) {
-        redirect("/acc");
+    const admins = await db.get("SELECT * FROM admins WHERE email=?", validatedData.data.email);
+    const users = await db.get("SELECT * FROM users WHERE email=?", validatedData.data.email);
+    const companies = await db.get("SELECT * FROM companies WHERE email=?", validatedData.data.email);
+    if (admins) {
+        if (admins["password"] == validatedData.data.password) {
+            const expires = new Date(Date.now() + 10 * 100000);
+            const cookieStore = await cookies();
+            cookieStore.set("session", admins["email"] + "_admin", { expires, httpOnly: true });
+            await db.close();
+            redirect("/acc");
+        }
     }
-    await db.close();
+    if (users) {
+        if (users["password"] == validatedData.data.password) {
+            const expires = new Date(Date.now() + 10 * 100000);
+            const cookieStore = await cookies();
+            cookieStore.set("session", users["email"] + "_user", { expires, httpOnly: true });
+            await db.close();
+            redirect("/acc");
+        }
+    }
+    if (companies) {
+        if (companies["password"] == validatedData.data.password) {
+            const expires = new Date(Date.now() + 10 * 100000);
+            const cookieStore = await cookies();
+            cookieStore.set("session", companies["email"] + "_company", { expires, httpOnly: true });
+            await db.close();
+            redirect("/acc");
+        }
+    }
     return
     {
         success: "ok"
