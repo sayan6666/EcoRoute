@@ -4,6 +4,7 @@ import { z } from "zod";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers"
 import { validate } from "maplibre-gl";
+import { any } from "zod/v3";
 
 const formSchema = z.object({
     email: z.string().email({ message: "email" }),
@@ -200,6 +201,24 @@ export async function handleVerification(prevstate: any, formData: FormData) {
     return {
         succes: "ok"
     };
+}
+
+export async function typeStats() {
+    const db = await openDb();
+    const types = ["glass", "plastic", "metall"];
+    const stats = [];
+    for (let i = 0; i < types.length; i++) {
+        stats[i] = (db.all("SELECT COUNT(type) FROM points WHERE type LIKE \"%?%\"", types[i]),types[i]);
+    }
+    return stats;
+}
+
+export async function companyStats() {
+    //todo: выбор кол-ва точек по id компании
+}
+
+export async function reviewStats() {
+    //todo: выбор среднего отзывов по id компании
 }
 
 //unused
